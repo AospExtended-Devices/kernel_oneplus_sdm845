@@ -65,25 +65,6 @@
 #include "synaptics_baseline.h"
 #include "synaptics_dsx_core.h"
 #include <linux/oneplus/boot_mode.h>
-
-#include <linux/moduleparam.h>
-
-#define WAKE_GESTURES 		1
-#ifdef WAKE_GESTURES
-#define WAKE_GESTURE		0x0b
-#define SWEEP_RIGHT		0x01
-#define SWEEP_LEFT		0x02
-#define SWEEP_UP		0x04
-#define SWEEP_DOWN		0x08
-static struct synaptics_ts_data *gl_ts;
-static struct input_dev *gesture_dev;
-struct kobject *android_touch_kobj;
-EXPORT_SYMBOL_GPL(android_touch_kobj);
-static int gestures_switch = 0;
-static int s2w_switch = 0;
-static int dt2w_switch = 0;
-#endif
-
 /*------------------------------------------------Global Define--------------------------------------------*/
 
 #define TP_UNKNOWN 0
@@ -192,6 +173,8 @@ struct fp_underscreen_info {
 #define KEY_GESTURE_SWIPE_UP        KEY_F8
 #endif
 
+
+
 #define BIT0 (0x1 << 0)
 #define BIT1 (0x1 << 1)
 #define BIT2 (0x1 << 2)
@@ -221,11 +204,6 @@ int Single_gesture = 0; //"(SingleTap)"
 int Enable_gesture =0;
 static int gesture_switch = 0;
 #endif
-
-bool haptic_feedback_disable = false;
-module_param(haptic_feedback_disable, bool, 0644);
-
-void qpnp_hap_ignore_next_request(void);
 
 /*********************for Debug LOG switch*******************/
 #define TPD_ERR(a, arg...)  pr_err(TPD_DEVICE ": " a, ##arg)
@@ -1430,7 +1408,7 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 	gesture_sign = gesture_buffer[0];
 
 	if (ts->project_version == 0x03) {
-		if (DouTap_gesture || dt2w_switch) {
+		if (DouTap_gesture) {
 			if (gesture_sign == SINGLE_TAP) {
 				is_double_tap = double_tap(ts);
 				if (is_double_tap == 1) {
@@ -1607,9 +1585,6 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 		input_sync(ts->input_dev);
 		input_report_key(ts->input_dev, keyCode, 0);
 		input_sync(ts->input_dev);
-
-		if (haptic_feedback_disable)
-			qpnp_hap_ignore_next_request();
 	}else{
 		ret = i2c_smbus_read_i2c_block_data( ts->client, F12_2D_CTRL20, 3, &(reportbuf[0x0]) );
 		ret = reportbuf[2] & 0x20;
@@ -1621,7 +1596,7 @@ static void gesture_judge(struct synaptics_ts_data *ts)
 	}
 	TPD_DEBUG("%s end!\n", __func__);
 }
-
+#endif
 /***************end****************/
 static char prlog_count = 0;
 #ifdef REPORT_2D_PRESSURE
@@ -3692,11 +3667,6 @@ static int	synaptics_input_init(struct synaptics_ts_data *ts)
 	set_bit(BTN_TOOL_FINGER, ts->input_dev->keybit);
 #ifdef SUPPORT_GESTURE
 	set_bit(KEY_F4 , ts->input_dev->keybit);//doulbe-tap resume
-#ifdef WAKE_GESTURES
-	set_bit(KEY_POWER, ts->input_dev->keybit);
-	input_set_capability(ts->input_dev, EV_KEY, KEY_POWER);
-#endif
-#ifdef VENDOR_EDIT_OXYGEN
 	set_bit(KEY_DOUBLE_TAP, ts->input_dev->keybit);
 	set_bit(KEY_GESTURE_CIRCLE, ts->input_dev->keybit);
 	set_bit(KEY_GESTURE_V, ts->input_dev->keybit);
@@ -5903,80 +5873,6 @@ static int synaptics_ts_init_virtual_key(struct synaptics_ts_data *ts )
 }
 #endif
 
-#ifdef WAKE_GESTURES
-static ssize_t sweep2wake_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	size_t count = 0;
-	count += sprintf(buf, "%d\n", s2w_switch);
-
-	return count;
-}
-
-static ssize_t sweep2wake_dump(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	int input;
-	sscanf(buf, "%d ", &input);
-	if (input < 0 || input > 15) {
-		s2w_switch = 0;
-	} else {
-		s2w_switch = input;
-	}
-	gestures_enable();
-
-	return count;
-}
-
-static DEVICE_ATTR(sweep2wake, (S_IWUSR|S_IRUGO),
-	sweep2wake_show, sweep2wake_dump);
-
-
-static ssize_t doubletap2wake_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	size_t count = 0;
-	count += sprintf(buf, "%d\n", dt2w_switch);
-
-	return count;
-}
-
-static ssize_t doubletap2wake_dump(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	int input;
-	sscanf(buf, "%d ", &input);
-	dt2w_switch = (input) ? 1 : 0;
-	gestures_enable();
-
-	return count;
-}
-
-static DEVICE_ATTR(doubletap2wake, (S_IWUSR|S_IRUGO),
-	doubletap2wake_show, doubletap2wake_dump);
-
-static ssize_t wake_gestures_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	size_t count = 0;
-	count += sprintf(buf, "%d\n", gestures_switch);
-	return count;
-}
-static ssize_t wake_gestures_dump(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	int input;
-	sscanf(buf, "%d ", &input);
-	gestures_switch = (input) ? 1 : 0;
-	gestures_enable();
-
-	return count;
-}
-
-static DEVICE_ATTR(wake_gestures, (S_IWUSR|S_IRUGO),
-	wake_gestures_show, wake_gestures_dump);
-#endif
-
 static int synaptics_ts_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 #ifdef CONFIG_SYNAPTIC_RED
@@ -6278,42 +6174,6 @@ static int synaptics_ts_probe(struct i2c_client *client, const struct i2c_device
 	}
 #endif
 	init_synaptics_proc();
-#ifdef WAKE_GESTURES
-	gl_ts = ts;
-
-	gesture_dev = input_allocate_device();
-	if (!gesture_dev) {
-		pr_err("Can't allocate gesture device\n");
-		goto exit_init_failed;
-	}
-
-	gesture_dev->name = "wake_gesture";
-	gesture_dev->phys = "wake_gesture/input0";
-	input_set_capability(gesture_dev, EV_REL, WAKE_GESTURE);
-
-	ret = input_register_device(gesture_dev);
-	if (ret) {
-		pr_err("%s: input_register_device err=%d\n", __func__, ret);
-		goto err_gesture_dev;
-	}
-
-	android_touch_kobj = kobject_create_and_add("android_touch", NULL) ;
-	if (android_touch_kobj == NULL) {
-		pr_warn("%s: android_touch_kobj create_and_add failed\n", __func__);
-	}
-	ret = sysfs_create_file(android_touch_kobj, &dev_attr_sweep2wake.attr);
-	if (ret) {
-		pr_warn("%s: sysfs_create_file failed for sweep2wake\n", __func__);
-	}
-	ret = sysfs_create_file(android_touch_kobj, &dev_attr_doubletap2wake.attr);
-	if (ret) {
-		pr_warn("%s: sysfs_create_file failed for doubletap2wake\n", __func__);
-	}
-	ret = sysfs_create_file(android_touch_kobj, &dev_attr_wake_gestures.attr);
-	if (ret) {
-		pr_warn("%s: sysfs_create_file failed for wake_gestures\n", __func__);
-	}
-#endif
 	TPDTM_DMESG("synaptics_ts_probe 3203: normal end\n");
 
 	bootmode = get_boot_mode();
@@ -6328,10 +6188,6 @@ static int synaptics_ts_probe(struct i2c_client *client, const struct i2c_device
 
 	return 0;
 
-#ifdef WAKE_GESTURES
-err_gesture_dev:
-	input_free_device(gesture_dev);
-#endif
 exit_init_failed:
 	free_irq(client->irq,ts);
 exit_createworkqueue_failed:
