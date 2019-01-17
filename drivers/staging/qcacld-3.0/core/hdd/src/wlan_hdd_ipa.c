@@ -6849,7 +6849,7 @@ static int __hdd_ipa_wlan_evt(hdd_adapter_t *adapter, uint8_t sta_id,
 	int ret = 0;
 
 	if (hdd_validate_adapter(adapter)) {
-		HDD_IPA_LOG(QDF_TRACE_LEVEL_ERROR, "Invalid adapter: 0x%pK",
+		HDD_IPA_LOG(QDF_TRACE_LEVEL_DEBUG, "Invalid adapter: 0x%pK",
 			    adapter);
 		return -EINVAL;
 	}
@@ -7004,7 +7004,7 @@ static int __hdd_ipa_wlan_evt(hdd_adapter_t *adapter, uint8_t sta_id,
 
 		qdf_mutex_release(&hdd_ipa->event_lock);
 
-		HDD_IPA_LOG(QDF_TRACE_LEVEL_INFO, "sta_connected=%d",
+		HDD_IPA_LOG(QDF_TRACE_LEVEL_DEBUG, "sta_connected=%d",
 			    hdd_ipa->sta_connected);
 		break;
 
@@ -7089,7 +7089,7 @@ static int __hdd_ipa_wlan_evt(hdd_adapter_t *adapter, uint8_t sta_id,
 
 		qdf_mutex_release(&hdd_ipa->event_lock);
 
-		HDD_IPA_LOG(QDF_TRACE_LEVEL_INFO, "sta_connected=%d",
+		HDD_IPA_LOG(QDF_TRACE_LEVEL_DEBUG, "sta_connected=%d",
 			    hdd_ipa->sta_connected);
 		break;
 
@@ -7714,7 +7714,7 @@ void hdd_ipa_fw_rejuvenate_send_msg(hdd_context_t *hdd_ctx)
 		HDD_IPA_LOG(QDF_TRACE_LEVEL_DEBUG, "msg allocation failed");
 		return;
 	}
-	meta.msg_type = IPA_SSR_BEFORE_SHUTDOWN;
+	meta.msg_type = WLAN_FWR_SSR_BEFORE_SHUTDOWN;
 	HDD_IPA_LOG(QDF_TRACE_LEVEL_DEBUG, "ipa_send_msg(Evt:%d)",
 		    meta.msg_type);
 	ret = ipa_send_msg(&meta, msg, hdd_ipa_msg_free_fn);
